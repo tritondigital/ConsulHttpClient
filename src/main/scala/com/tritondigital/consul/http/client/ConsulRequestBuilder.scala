@@ -1,5 +1,6 @@
 package com.tritondigital.consul.http.client
 
+import com.ning.http.client.uri.Uri
 import com.ning.http.client.{AsyncHttpClient, Response}
 
 import scala.concurrent.Future
@@ -19,8 +20,8 @@ class ConsulRequestBuilder(requestBuilder: AsyncHttpClient#BoundRequestBuilder) 
       val nodes = consulClient.resolve(host)
       nodes.flatMap { nodes =>
         val node = nodes.head
-        val client = new AsyncHttpClient()
-        client.executeRequest(new ConsulRequest(request, node))
+        val uri = new Uri(request.getUri.getScheme, request.getUri.getUserInfo, node.ip, node.port, request.getUri.getPath, request.getUri.getQuery)
+        requestBuilder.setUrl(uri.toUrl)
         new FutureRequestBuilder(requestBuilder).execute()
       }
     } else {

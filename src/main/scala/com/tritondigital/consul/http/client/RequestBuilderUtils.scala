@@ -12,7 +12,8 @@ object RequestBuilderUtils {
     val request = requestBuilder.build()
     val host = request.getUri.getHost
     if (host.endsWith(".service.consul")) {
-      resolve(host).map { node =>
+      val service = host.substring(0, host.indexOf(".service.consul"))
+      resolve(service).map { node =>
         val uri = new Uri(request.getUri.getScheme, request.getUri.getUserInfo, node.ip, node.port, request.getUri.getPath, request.getUri.getQuery)
         requestBuilder.resetQuery()
         requestBuilder.setUrl(uri.toUrl)

@@ -10,12 +10,12 @@ import spray.http.HttpResponse
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class ConsulClientTest extends WordSpec with Matchers with ScalaFutures {
+class ConsulHttpClientTest extends WordSpec with Matchers with ScalaFutures {
 
-  val consulClient = new ConsulClient((body) => List(Node("10.30.101.47", 32770), Node("10.30.101.48", 32771)))
+  val consulClient = new ConsulHttpClient((body) => List(Node("10.30.101.47", 32770), Node("10.30.101.48", 32771)))
   val json = "json"
 
-  "Consul Client" when {
+  "Consul HTTP Client" when {
 
     "querying" should {
       "pass the passing parameter" in {
@@ -26,7 +26,7 @@ class ConsulClientTest extends WordSpec with Matchers with ScalaFutures {
             HttpResponse(200)
         }
         Server.executeWhileRunning(consul) {
-          whenReady(consulClient.resolve("myService.service.consul")) { nodes =>
+          whenReady(consulClient.listNodes("myService")) { nodes =>
             passingParameterPresent should be(true)
           }
         }
@@ -39,7 +39,7 @@ class ConsulClientTest extends WordSpec with Matchers with ScalaFutures {
           case Get("/v1/health/service/myService") => HttpResponse(200, json)
         }
         Server.executeWhileRunning(consul) {
-          consulClient.resolve("myService.service.consul").futureValue should contain allOf(Node("10.30.101.47", 32770), Node("10.30.101.48", 32771))
+          consulClient.listNodes("myService").futureValue should contain allOf(Node("10.30.101.47", 32770), Node("10.30.101.48", 32771))
         }
       }
     }
@@ -51,7 +51,7 @@ class ConsulClientTest extends WordSpec with Matchers with ScalaFutures {
         }
         Server.executeWhileRunning(consul) {
           val exception = the[StatusCodeException] thrownBy {
-            Await.result(consulClient.resolve("myService.service.consul"), 1.second)
+            Await.result(consulClient.listNodes("myService"), 1.second)
           }
 
           exception.getMessage should be("Unable to get a response from Consul with host: localhost, port: 8500, statusCode: 404")
@@ -62,7 +62,7 @@ class ConsulClientTest extends WordSpec with Matchers with ScalaFutures {
     "no Consul server is up" should {
       "fail the future with a ConnectException" in {
         val exception = the[ConnectException] thrownBy {
-          Await.result(consulClient.resolve("myService.service.consul"), 1.second)
+          Await.result(consulClient.listNodes("myService"), 1.second)
         }
 
         exception.getMessage should be("Connection refused: localhost/127.0.0.1:8500")

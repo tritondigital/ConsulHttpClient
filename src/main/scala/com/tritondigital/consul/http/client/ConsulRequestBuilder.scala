@@ -7,13 +7,13 @@ import scala.concurrent.Future
 
 class ConsulRequestBuilder(requestBuilder: AsyncHttpClient#BoundRequestBuilder) {
 
-  private val consulClient = new ConsulClient(Json.extractNodes)
+  private val consulClient = new ConsulClient(new ConsulHttpClient(Json.extractNodes).listNodes)
 
   def withConsul(): ConsulRequestBuilder = this
 
   def execute(): Future[Response] = {
-    val resolve: String => Future[Seq[Node]] = consulClient.resolve
-    val futureRequestBuilder = RequestBuilderUtils.replaceIpAndPortIfNecessary(requestBuilder, resolve.andThen(selectNode))
+    val resolve: String => Future[Node] = consulClient.resolve
+    val futureRequestBuilder = RequestBuilderUtils.replaceIpAndPortIfNecessary(requestBuilder, resolve)
     futureRequestBuilder.flatMap(new FutureRequestBuilder(_).execute())
   }
 

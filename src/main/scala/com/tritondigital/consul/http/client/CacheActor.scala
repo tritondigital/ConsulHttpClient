@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorRef, Props}
 
 class CacheActor(consulActor: ActorRef) extends Actor {
 
-  var cache: Map[String, Seq[Node]] = Map.empty
+  var cache: Map[String, CacheEntry] = Map.empty
   var awaitingSenders = Map.empty[String, Vector[ActorRef]]
 
   override def receive: Receive = {
@@ -15,7 +15,7 @@ class CacheActor(consulActor: ActorRef) extends Actor {
 
   private def getNode(service: String): Unit = {
     cache.get(service) match {
-      case Some(nodes) => sender ! selectNode(service, nodes)
+      case Some(CacheEntry(nodes, index)) => sender ! selectNode(service, nodes, index)
       case None =>
         updateAwaitingSenders(service)
         consulActor ! GetNodes(service)
@@ -23,18 +23,20 @@ class CacheActor(consulActor: ActorRef) extends Actor {
   }
 
   private def cacheResult(service: String, nodes: Seq[Node]) {
-    cache += service -> nodes
+    cache = cache.updated(service, CacheEntry(nodes))
     awaitingSenders.getOrElse(service, Vector.empty).foreach { actor =>
       actor ! selectNode(service, nodes)
     }
     consulActor ! GetNodes(service)
   }
 
-  private def selectNode(service: String, nodes: Seq[Node]): Any = {
+  private def selectNode(service: String, nodes: Seq[Node], index: Int = 0): Any = {
     if (nodes.isEmpty) {
       Failure(new NoNodeAvailableException(service))
     } else {
-      nodes.head
+      val node = nodes(index)
+      cache = cache.updated(service, CacheEntry(nodes, (index + 1) % nodes.size))
+      node
     }
   }
 
@@ -42,6 +44,8 @@ class CacheActor(consulActor: ActorRef) extends Actor {
     val senders: Vector[ActorRef] = awaitingSenders.getOrElse(service, Vector.empty)
     awaitingSenders = awaitingSenders.updated(service, senders :+ sender())
   }
+
+  case class CacheEntry(nodes: Seq[Node], index: Int = 0)
 }
 
 object CacheActor {

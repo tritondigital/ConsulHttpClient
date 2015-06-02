@@ -13,6 +13,7 @@ lazy val librairies = Seq(
   "com.ning" % "async-http-client" % "1.9.24",
   "org.json4s" %% "json4s-native" % "3.2.10",
   "com.typesafe.akka" %% "akka-actor" % "2.3.11",
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.11" % Test,
   ("org.scalatest" %% "scalatest" % "2.2.4" % Test).exclude("com.typesafe.akka", "akka-actor_2.11"),
   "spray-gun" % "spray-gun_2.11" % "1.2.0" % Test
 )

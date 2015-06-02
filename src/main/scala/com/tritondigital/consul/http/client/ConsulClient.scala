@@ -17,7 +17,7 @@ object ConsulClient {
 
   private val consulActor: ActorRef = actorSystem.actorOf(ConsulActor.props(listNodes), "consulActor")
 
-  def resolve(service: String): Future[Node] = (consulActor ? Service(service)).mapTo[Node]
+  def resolve(service: String): Future[Node] = (consulActor ? GetNode(service)).mapTo[Node]
 
 }
 

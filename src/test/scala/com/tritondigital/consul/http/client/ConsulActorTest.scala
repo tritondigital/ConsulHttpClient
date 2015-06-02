@@ -23,11 +23,11 @@ class ConsulActorTest extends WordSpec with Matchers with ScalaFutures with Befo
           Future.successful(ConsulResponse(List(Node("127.0.0.1", 9999)), 2))
         }
         val actor = actorSystem.actorOf(ConsulActor.props(listNodes))
-        whenReady(actor ? Service("myService")) { _ =>
+        whenReady(actor ? GetNode("myService")) { _ =>
           passedIndex should not be 'defined
         }
-        whenReady(actor ? Service("myService")) { _ =>
-          passedIndex should be(Some(2))
+        whenReady(actor ? GetNode("myService")) { _ =>
+          passedIndex should be (Some(2))
         }
       }
     }
@@ -39,22 +39,10 @@ class ConsulActorTest extends WordSpec with Matchers with ScalaFutures with Befo
           promise.future
         }
         val actor = actorSystem.actorOf(ConsulActor.props(listNodes))
-        val future = actor ? Service("myService")
+        val future = actor ? GetNode("myService")
         future.isCompleted should be(false)
         promise.success(ConsulResponse(List(Node("127.0.0.1", 9999)), 2))
         future.futureValue should be(Node("127.0.0.1", 9999))
-      }
-    }
-
-    "when it has a value in cache" should {
-      "return the value in cache" in {
-        val listNodes: (String, Option[Int]) => Future[ConsulResponse] = (service: String, index: Option[Int]) => {
-          Future.successful(ConsulResponse(List(Node("127.0.0.1", 9999)), 2))
-        }
-        val actor = actorSystem.actorOf(ConsulActor.props(listNodes))
-        actor ! CachedResult("myService" -> ConsulResponse(List(Node("127.0.0.2", 9998)), 1))
-        val future = actor ? Service("myService")
-        future.futureValue should be(Node("127.0.0.2", 9998))
       }
     }
   }

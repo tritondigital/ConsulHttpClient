@@ -16,8 +16,9 @@ object ConsulClient {
   private val actorSystem = ActorSystem("consul")
 
   private val consulActor: ActorRef = actorSystem.actorOf(ConsulActor.props(listNodes), "consulActor")
+  private val cacheActor: ActorRef = actorSystem.actorOf(CacheActor.props(consulActor), "cacheActor")
 
-  def resolve(service: String): Future[Node] = (consulActor ? GetNode(service)).mapTo[Node]
+  def resolve(service: String): Future[Node] = (cacheActor ? GetNode(service)).mapTo[Node]
 
 }
 

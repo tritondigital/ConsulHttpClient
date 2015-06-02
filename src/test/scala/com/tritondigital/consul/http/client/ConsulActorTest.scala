@@ -1,20 +1,36 @@
 package com.tritondigital.consul.http.client
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
+import akka.testkit.TestProbe
 import akka.util.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpec}
 
+import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
 
 class ConsulActorTest extends WordSpec with Matchers with ScalaFutures with BeforeAndAfterAll {
 
-  val actorSystem = ActorSystem()
+  implicit val actorSystem = ActorSystem()
+
   implicit val timeout: Timeout = 1.second
 
   "The Consul Actor" when {
+
+    "receiving a response" should {
+      "send the CacheResult message with the response" in {
+        val listNodes: (String, Option[Int]) => Future[ConsulResponse] = (service: String, index: Option[Int]) => {
+          Future.successful(ConsulResponse(List(Node("127.0.0.1", 9999)), 2))
+        }
+        val probe = TestProbe()
+        implicit val sender: ActorRef = probe.ref
+        val actor = actorSystem.actorOf(ConsulActor.props(listNodes))
+        actor ! GetNodes("myService")
+        probe.expectMsg(1.second, CacheResult("myService" -> List(Node("127.0.0.1", 9999))))
+      }
+    }
+
     "receiving a response containing an index" should {
       "reuse the index in a subsequent call" in {
         var passedIndex: Option[Int] = None
@@ -23,28 +39,34 @@ class ConsulActorTest extends WordSpec with Matchers with ScalaFutures with Befo
           Future.successful(ConsulResponse(List(Node("127.0.0.1", 9999)), 2))
         }
         val actor = actorSystem.actorOf(ConsulActor.props(listNodes))
-        whenReady(actor ? GetNode("myService")) { _ =>
+        whenReady(actor ? GetNodes("myService")) { _ =>
           passedIndex should not be 'defined
         }
-        whenReady(actor ? GetNode("myService")) { _ =>
-          passedIndex should be (Some(2))
+        whenReady(actor ? GetNodes("myService")) { _ =>
+          passedIndex should be(Some(2))
         }
       }
     }
 
-    "when it has no value in cache" should {
-      "wait after the result of the listNodes function" in {
+    "already waiting for a response" should {
+      "not call the listNodes function" in {
+        var called = 0
         val promise = Promise[ConsulResponse]()
         val listNodes: (String, Option[Int]) => Future[ConsulResponse] = (service: String, index: Option[Int]) => {
+          called += 1
           promise.future
         }
         val actor = actorSystem.actorOf(ConsulActor.props(listNodes))
-        val future = actor ? GetNode("myService")
-        future.isCompleted should be(false)
+        val probe = TestProbe()
+        implicit val sender: ActorRef = probe.ref
+        actor ! GetNodes("myService")
+        actor ! GetNodes("myService")
         promise.success(ConsulResponse(List(Node("127.0.0.1", 9999)), 2))
-        future.futureValue should be(Node("127.0.0.1", 9999))
+        probe.expectMsg(1.second, CacheResult("myService" -> List(Node("127.0.0.1", 9999))))
+        called should be (1)
       }
     }
+
   }
 
   override def afterAll(): Unit = {

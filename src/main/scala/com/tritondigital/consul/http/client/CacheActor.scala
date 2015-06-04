@@ -10,7 +10,7 @@ class CacheActor(consulActor: ActorRef) extends Actor {
 
   override def receive: Receive = {
     case GetNode(service) => getNode(service)
-    case CacheResult((service, nodes)) => cacheResult(service, nodes)
+    case CachedResult((service, nodes)) => receiveCachedResult(service, nodes)
   }
 
   private def getNode(service: String): Unit = {
@@ -22,7 +22,7 @@ class CacheActor(consulActor: ActorRef) extends Actor {
     }
   }
 
-  private def cacheResult(service: String, nodes: Seq[Node]) {
+  private def receiveCachedResult(service: String, nodes: Seq[Node]) {
     cache += service -> nodes
     awaitingSenders.getOrElse(service, Vector.empty).foreach { actor =>
       actor ! selectNode(service, nodes)
@@ -52,5 +52,5 @@ object CacheActor {
 
 case class GetNode(service: String)
 
-case class CacheResult(cachedResult: (String, Seq[Node]))
+case class CachedResult(cachedResult: (String, Seq[Node]))
 

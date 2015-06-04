@@ -14,33 +14,23 @@ class ConsulActor(listNodes: (String, Option[Int]) => Future[ConsulResponse]) ex
   var lastSender: Option[ActorRef] = None
 
   override def receive: Receive = {
-    case GetNodes(service) => getNodes(service)
-    case Done((service, response)) => done(service, response)
+    case GetNodes(service) =>
+      lastSender = Some(sender())
+      if (operations.get(service).isEmpty) {
+        val consulResponse: Future[ConsulResponse] = listNodes(service, index)
+        operations += service -> consulResponse
+        consulResponse.map { response =>
+          Done(service -> response)
+        }.pipeTo(self)
+      }
+    case Done((service, response)) =>
+      index = Some(response.index)
+      operations -= service
+      lastSender.foreach { actor =>
+        actor ! CacheResult(service -> response.nodes)
+      }
   }
 
-  private def getNodes(service: String) {
-    lastSender = Some(sender())
-    if (operations.get(service).isEmpty) {
-      val consulResponse: Future[ConsulResponse] = listNodes(service, index)
-      operations += service -> consulResponse
-      sendResponseToSelf(service, consulResponse)
-    }
-  }
-
-  private def done(service: String, response: ConsulResponse) {
-    index = Some(response.index)
-    operations -= service
-    lastSender.foreach { actor =>
-      actor ! CacheResult(service -> response.nodes)
-    }
-  }
-
-  private def sendResponseToSelf(service: String, consulResponse: Future[ConsulResponse]) {
-    val messageToSend: Future[Done] = consulResponse.map { response =>
-      Done(service -> response)
-    }
-    messageToSend.pipeTo(self)
-  }
 }
 
 object ConsulActor {

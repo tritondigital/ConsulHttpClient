@@ -40,13 +40,6 @@ class CacheActorTest extends fixture.WordSpec with Matchers with ScalaFutures wi
         }
         exception.getMessage should be("No available node found for service: myService")
       }
-
-      "load balance on all nodes" in { f =>
-        f.actor ! CacheResult("myService" -> List(Node("127.0.0.1", 9999), Node("127.0.0.2", 9998)))
-        (f.actor ? GetNode("myService")).futureValue should be(Node("127.0.0.1", 9999))
-        (f.actor ? GetNode("myService")).futureValue should be(Node("127.0.0.2", 9998))
-        (f.actor ? GetNode("myService")).futureValue should be(Node("127.0.0.1", 9999))
-      }
     }
 
     "when it has no value in cache" should {

@@ -13,13 +13,14 @@ class ConsulActor(listNodes: (String, Option[Int]) => Future[ConsulResponse]) ex
   var cache: Map[String, ConsulResponse] = Map.empty
 
   override def receive: Receive = {
-    case GetNode(service) =>
+    case Service(service) =>
       val cachedResult: Option[Future[ConsulResponse]] = cache.get(service).map(Future.successful)
       val consulResponse: Future[ConsulResponse] = cachedResult.getOrElse(listNodes(service, index))
       consulResponse.map { response =>
         index = Some(response.index)
         response.nodes.head
       }.pipeTo(sender())
+    case CachedResult((service, consulResponse)) => cache += (service -> consulResponse)
   }
 
 }
@@ -30,4 +31,6 @@ object ConsulActor {
 
 }
 
-case class GetNodes(service: String)
+case class Service(service: String)
+
+case class CachedResult(cachedResult: (String, ConsulResponse))

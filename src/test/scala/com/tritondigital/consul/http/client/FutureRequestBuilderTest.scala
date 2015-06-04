@@ -15,7 +15,7 @@ class FutureRequestBuilderTest extends WordSpec with Matchers with ScalaFutures 
   val client = new AsyncHttpClient()
   val consulRequestBuilder = new FutureRequestBuilder(client.prepareGet("http://localhost:9999"))
 
-  "FutureRequestBuilder" when {
+  "ConsulRequestBuilder" when {
     "receiving a response from the BoundRequestBuilder" should {
       "return a successful future with this response" in {
         val server = Server.simpleServer(port = 9999, content = "test")
@@ -38,7 +38,7 @@ class FutureRequestBuilderTest extends WordSpec with Matchers with ScalaFutures 
     }
   }
 
-  override def afterAll(): Unit = {
+  override def afterAll: Unit = {
     client.close()
   }
 

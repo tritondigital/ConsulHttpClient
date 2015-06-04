@@ -6,6 +6,9 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FeatureSpec, GivenWhenThen, Matchers}
 import spray.http.ContentTypes
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 class ServiceDiscoveryFeature extends FeatureSpec with GivenWhenThen with Matchers with ScalaFutures with BeforeAndAfterAll {
 
   val client = new AsyncHttpClient
@@ -23,6 +26,8 @@ class ServiceDiscoveryFeature extends FeatureSpec with GivenWhenThen with Matche
       | }
       |]
     """.stripMargin
+
+  val emptyJson = "[]"
 
   feature("Service Discovery") {
 
@@ -62,9 +67,30 @@ class ServiceDiscoveryFeature extends FeatureSpec with GivenWhenThen with Matche
       }
     }
 
+    scenario("The HTTP client should fail if no node was found in Consul") {
+      Given("""a HTTP server listening on port 9999 and IP 127.0.0.1 that always returns 200 with "test" as the body""")
+      val server = Server.simpleServer(interface = "127.0.0.1", port = 9999, content = "test")
+      Server.executeWhileRunning(server) {
+
+        And("a Consul server that returns no node for the myService service")
+        val consul = Server.simpleServer(port = 8500, contentType = ContentTypes.`application/json`, content = emptyJson)
+        Server.executeWhileRunning(consul) {
+          When("the HTTP client calls the service")
+          val future = client.prepareGet("http://myService.service.consul").withConsul().execute()
+
+          Then("a NoNodeException should be thrown")
+          val exception = the[NoNodeException] thrownBy  {
+            Await.result(future, 1.second)
+          }
+          exception.getMessage should be ("No node found for service myService")
+        }
+      }
+    }
+
   }
 
   override def afterAll(): Unit = {
+    ConsulClient.reset()
     client.close()
   }
 

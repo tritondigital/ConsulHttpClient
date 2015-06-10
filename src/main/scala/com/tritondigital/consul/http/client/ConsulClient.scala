@@ -7,9 +7,17 @@ class ConsulClient(listNodes: (String, String, Int) => Future[Seq[Node]]) {
 
   private var nodeSelector = new RoundRobinSelector[Node]
 
-  def resolve(service: String, host: String, port: Int): Future[Node] = listNodes(service, host, port).map { nodes =>
-    nodeSelector.select(nodes).getOrElse {
-      throw new NoNodeException(service)
+  def resolve(service: String, host: String, port: Int, cacheOption: Option[Cache]): Future[Node] = {
+    val future = cacheOption match {
+      case None => listNodes(service, host, port)
+      case Some(cache) => cache(service, host, port) {
+        listNodes(service, host, port)
+      }
+    }
+    future.map { nodes =>
+      nodeSelector.select(nodes).getOrElse {
+        throw new NoNodeException(service)
+      }
     }
   }
 

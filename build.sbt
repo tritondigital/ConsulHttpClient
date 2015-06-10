@@ -12,6 +12,7 @@ lazy val scalaSettings = Seq(
 lazy val librairies = Seq(
   "com.ning" % "async-http-client" % "1.9.24",
   "org.json4s" %% "json4s-native" % "3.2.10",
+  "io.spray" %% "spray-caching" % "1.3.3",
   "org.scalatest" %% "scalatest" % "2.2.4" % Test,
   "spray-gun" % "spray-gun_2.11" % "1.2.0" % Test
 )

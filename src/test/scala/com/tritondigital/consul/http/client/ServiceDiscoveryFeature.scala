@@ -87,6 +87,26 @@ class ServiceDiscoveryFeature extends FeatureSpec with GivenWhenThen with Matche
       }
     }
 
+    scenario("Configuring the port and host for Consul") {
+      Given("""a HTTP server listening on port 9999 and IP 127.0.0.1 that always returns 200 with "test" as the body""")
+      val server = Server.simpleServer(interface = "127.0.0.1", port = 9999, content = "test")
+      Server.executeWhileRunning(server) {
+
+        And("a Consul server running on port 8300 that returns localhost and 9999 for the IP and port of the myService service")
+        val consul = Server.simpleServer(interface = "127.0.0.1", port = 8300, contentType = ContentTypes.`application/json`, content = consulJson)
+        Server.executeWhileRunning(consul) {
+          When("the HTTP client calls the service")
+          val response: Response = client.prepareGet("http://myService.service.consul").withConsul(host = "127.0.0.1", port = 8300).execute().futureValue
+
+          Then("the status code returned by the client should be 200")
+          response.getStatusCode should be(200)
+
+          And("""body should be "test"""")
+          response.getResponseBody should be("test")
+        }
+      }
+    }
+
   }
 
   override def afterAll(): Unit = {

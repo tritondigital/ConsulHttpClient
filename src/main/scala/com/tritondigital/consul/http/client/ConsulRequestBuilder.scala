@@ -5,13 +5,13 @@ import com.ning.http.client.{AsyncHttpClient, Response}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class ConsulRequestBuilder(requestBuilder: AsyncHttpClient#BoundRequestBuilder) {
+class ConsulRequestBuilder(requestBuilder: AsyncHttpClient#BoundRequestBuilder, host: String = "localhost", port: Int = 8500) {
 
-  def withConsul(): ConsulRequestBuilder = this
+  def withConsul(host: String = "localhost", port: Int = 8500): ConsulRequestBuilder = new ConsulRequestBuilder(requestBuilder, host, port)
 
   def execute(): Future[Response] = {
-    val resolve: String => Future[Node] = ConsulClient.resolve
-    val futureRequestBuilder = RequestBuilderUtils.replaceIpAndPortIfNecessary(requestBuilder, resolve)
+    val resolve: (String, String, Int) => Future[Node] = ConsulClient.resolve
+    val futureRequestBuilder = RequestBuilderUtils.replaceIpAndPortIfNecessary(requestBuilder, resolve(_, host, port))
     futureRequestBuilder.flatMap(new FutureRequestBuilder(_).execute())
   }
 

@@ -44,17 +44,28 @@ class ConsulHttpClientTest extends WordSpec with Matchers with ScalaFutures {
       }
     }
 
+    "a Consul on port 8300 return multiple nodes" should {
+      "return a sequence of all the nodes with their IP and port" in {
+        val consul = Server.syncServer(interface = "127.0.0.1", port = 8300) {
+          case Get("/v1/health/service/myService") => HttpResponse(200, json)
+        }
+        Server.executeWhileRunning(consul) {
+          consulClient.listNodes("myService", "127.0.0.1", 8300).futureValue should contain allOf(Node("10.30.101.47", 32770), Node("10.30.101.48", 32771))
+        }
+      }
+    }
+
     "Consul return a non 200 response" should {
-      "fail the future with a StatusCodeException" in {
-        val consul = Server.syncServer(port = 8500) {
+      "fail the future with a StatusCodeException with the right port and host" in {
+        val consul = Server.syncServer(interface = "127.0.0.1", port = 8300) {
           case Get("/v1/health/service/myService") => HttpResponse(404)
         }
         Server.executeWhileRunning(consul) {
           val exception = the[StatusCodeException] thrownBy {
-            Await.result(consulClient.listNodes("myService"), 1.second)
+            Await.result(consulClient.listNodes("myService", "127.0.0.1", 8300), 1.second)
           }
 
-          exception.getMessage should be("Unable to get a response from Consul with host: localhost, port: 8500, statusCode: 404")
+          exception.getMessage should be("Unable to get a response from Consul with host: 127.0.0.1, port: 8300, statusCode: 404")
         }
       }
     }

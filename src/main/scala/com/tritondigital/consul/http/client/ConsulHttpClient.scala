@@ -22,3 +22,5 @@ class ConsulHttpClient(extractNodes: String => Seq[Node]) {
   }
 
 }
+
+object ConsulHttpClient extends ConsulHttpClient(Json.extractNodes)
